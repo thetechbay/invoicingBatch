@@ -28,40 +28,45 @@ def authenticationData(request):
         picture = request.data['picture']
 
         if(User.objects.filter(email=email,username=email).exists()):
-             # token, created = Token.objects.get_or_create(user=userObj)
             userObj = User.objects.get(username=email)
             token, created = Token.objects.get_or_create(user=userObj)
-
-            userCompanyDetails = users.objects.filter(user = userObj)
+            userDetails = users.objects.filter(user = userObj)
+            if(userDetails):
+                userDetails=userDetails.first()
+            else:
+                return Response({
+                'error':'user does not exist or does not belongs to any orgainisation, Please contact application supoprt'
+            })
+            customerObj = userDetails.customer
+            companiesObj = companies.objects.filter(customer = customerObj)
+            # print(clients.objects.filter(company__in = .count())
+            salesObj = sales.objects.filter(company__in = companiesObj)
+            total=0
+            paid = 0
+            remaining = 0;
+            for i in salesObj:
+                total+=i.total_amount
+                paid += i.amount_received
+                remaining += i.total_amount - i.amount_received
             res = {
                 'token':token.key,
-                'company': userCompanyDetails
+                'user_data':userObj.first_name + " "+userObj.last_name,
+                'company': companiesSerializer(companiesObj,many=True).data,
+                'customer': customersSerializer(customerObj,many=False).data,
+                'clients_count': clients.objects.filter(company__in = companiesObj).count(),
+                'sales_count' : salesObj.count(),
+                'sales_total' : total,
+                'sales_paid':paid,
+                'sales_remaining':remaining,
+                'company_count': companiesObj.count(),
+                'user_count' : users.objects.filter(customer=customerObj).count()
             }
             return Response(res)
         else:
             res = {
-                'msg':'user does not exist and belongs to any orgainisation, Please contact application supoprt'
+                'error':'user does not exist and belongs to any orgainisation, Please contact application supoprt'
             }
-            # userObj = User(username=email,password =make_password(first_name+"@1234"), email = email, first_name=first_name, last_name=last_name)
-            # userObj.save()
-            # obj = userInformation(
-            #     email=email,
-            #     email_verified = email_verified,
-            #     first_name = first_name,
-            #     last_name = last_name,
-            #     picture = picture,
-            #     user=userObj,
-            # )
-            # print(obj)
-            # obj.save();
-            # token, created = Token.objects.get_or_create(user=userObj)
-            # user= Token.objects.get(key=token.key).user
-            
-            # res = {
-            #     'token':token.key,
-            #     'company': companiesClientMappingsSerializer(companyObj,many=True).data,
-            # }
-            return Response(res)
+            return Response({'error':"invalid user"})
 
 
 @api_view(('GET',))
@@ -206,3 +211,61 @@ def checkInvoiceId(request,id):
         return Response({'msg':'true'})
     else:
         return Response({'msg':'false'})
+    
+
+csrf_exempt
+@api_view(('POST',))
+@permission_classes([IsAuthenticated])
+def SaveClientData(request):
+    if request.method == "POST":
+        name = request.data['client_name']
+        email = request.data['email']
+        phone = request.data['contact_number']
+        company_unique = request.data['company']
+        gstin = request.data['gstin']
+        if(clients.objects.filter(name=name,email=email,phone=phone,company=companies.objects.get(company_unique=company_unique),gstin=gstin).exists()):
+            return Response({'msg':'client already exists'})
+        else:
+            clients(
+                name=name,
+                email=email,
+                phone=phone,
+                company=companies.objects.get(company_unique=company_unique),
+                gstin=gstin
+            ).save()
+            return Response({"msg":"success"})
+
+
+
+@api_view(('GET',))
+@permission_classes([IsAuthenticated])
+def getCompanyData(request,id):
+    print(id)
+    obj = companies.objects.filter(customer = customers.objects.get(customer_unique = id))
+    serializer = companiesSerializer(obj,many=True)
+    return Response(serializer.data)
+
+
+@api_view(('GET',))
+@permission_classes([IsAuthenticated])
+def deleteSale(request,id):
+    sales.objects.filter(sale_unique=id).delete()
+    return Response({'msg':'successfull'})
+
+
+@api_view(('POST',))
+@permission_classes([IsAuthenticated])
+def recordPayment(request,id):
+    if request.method == "POST":
+        amount = request.data["amount"]
+        payment_type = request.data['payment_type']
+        obj = sales.objects.filter(sale_unique = id)
+        earlier_amount = obj.first().amount_received
+        new_amount = earlier_amount + int(amount)
+        obj.update(amount_received = new_amount)
+        payment(
+            sale = obj.first(),
+            payment_type = payment_type,
+            amount = amount
+        ).save()
+        return Response({'msg':"successfull"})

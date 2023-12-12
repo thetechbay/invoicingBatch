@@ -4,7 +4,10 @@ from .models import *
 
 from authentication.serializers import UserSerializer
 
-
+class customersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=customers
+        fields = '__all__'
 
 class companiesSerializer(serializers.ModelSerializer):
     class Meta:

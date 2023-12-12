@@ -79,10 +79,6 @@ class clients(models.Model):
 
 
 class sales(models.Model):
-    choice = [
-        ('CASH',"CASH"),
-        ('CHEQUE','CHEQUE')
-    ]
     id = models.AutoField(primary_key=True)
     sale_unique = models.UUIDField(default=uuid.uuid4, editable=False)
     company = models.ForeignKey(companies,on_delete=models.CASCADE)
@@ -98,8 +94,7 @@ class sales(models.Model):
     due_date = models.DateField(null=True, blank=True)
     state = models.CharField(max_length=100,null=True, blank = True)
     total_amount = models.FloatField()
-    amount_received = models.FloatField(null=True,blank=True)
-    payment_type = models.CharField(max_length=1000,choices=choice)
+    amount_received = models.FloatField(null=True,blank=True,default=0.0)
     description = models.TextField(null=True,blank=True)
     image = models.ImageField(null=True,blank=True)
     front_random_id = models.CharField(max_length=100,null=True, blank=True)
@@ -124,26 +119,28 @@ class salesItem(models.Model):
     
 
 
-class transactions(models.Model):
-    id = models.AutoField(primary_key=True)
-    transaction_id = models.CharField(max_length=1000)
-    client = models.ForeignKey(clients,on_delete=models.CASCADE)
-    company = models.ForeignKey(companies,on_delete=models.CASCADE)
-    total_amount = models.CharField(max_length=10000)
-    description = models.TextField(blank=True,null=True)
-    receipt_no = models.CharField(max_length=10)
-    date = models.DateField(auto_now_add=True)
+# class transactions(models.Model):
+#     id = models.AutoField(primary_key=True)
+#     transaction_id = models.CharField(max_length=1000)
+#     client = models.ForeignKey(clients,on_delete=models.CASCADE)
+#     company = models.ForeignKey(companies,on_delete=models.CASCADE)
+#     total_amount = models.CharField(max_length=10000)
+#     description = models.TextField(blank=True,null=True)
+#     receipt_no = models.CharField(max_length=10)
+#     date = models.DateField(auto_now_add=True)
 
 
     
 class payment(models.Model):
     choice = [
         ('CASH',"CASH"),
-        ('CHEQUE','CHEQUE')
+        ('CHEQUE','CHEQUE'),
+        ("UPI","UPI"),
+        ("RTGS/NEFT","RTGS/NEFT")
     ]
     id = models.AutoField(primary_key=True)
     payment_type = models.CharField(max_length=1000,choices=choice)
     amount = models.CharField(max_length=10000)
-    transaction_id = models.ForeignKey(transactions,on_delete=models.CASCADE)
+    sale = models.ForeignKey(sales,on_delete=models.CASCADE)
 
 
